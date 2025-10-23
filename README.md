@@ -85,21 +85,3 @@ k8s-master    Ready    control-plane   5m    v1.30.14
 k8s-worker1   Ready    <none>          3m    v1.30.14
 k8s-worker2   Ready    <none>          3m    v1.30.14
 
-🧩 프로젝트 구조
-
-vagrant-k8s-cluster/
-├── Vagrantfile
-├── ansible/
-│   ├── playbook.yml
-│   ├── inventory.ini
-│   ├── local_inventory_master.ini
-│   ├── local_inventory_worker.ini
-│   ├── roles/
-│   │   ├── common/
-│   │   │   └── tasks/main.yml
-│   │   │   └── handlers/main.yml
-│   │   ├── master/
-│   │   │   └── tasks/main.yml
-│   │   └── worker/
-│   │       └── tasks/main.yml
-└── README.md

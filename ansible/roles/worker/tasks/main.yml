@@ -1,0 +1,33 @@
+# - ansible_local (Windows): /vagrant/ansible/ 경로 사용
+# - ansible (Linux/mac): ./ansible/ 경로 사용
+- name: join 커맨드 파일 읽기 (Windows)
+  when: ansible_connection == "local"
+  slurp:
+    src: "/vagrant/ansible/join-command.sh"
+  register: join_data_win
+
+- name: join 커맨드 파일 읽기 (Linux/mac)
+  when: ansible_connection != "local"
+  slurp:
+    src: "./ansible/join-command.sh"
+  register: join_data_linux
+  delegate_to: localhost
+
+# 공통 변수로 병합
+# 둘 중 실행된 태스크의 결과를 join_data로 통합
+- name: join_data 병합
+  set_fact:
+    join_data: "{{ join_data_win if join_data_win is defined else join_data_linux }}"
+
+- name: 워커 노드 클러스터 조인
+  become: yes
+  shell: "{{ join_data.content | b64decode }}"
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+
+- name: kubelet 상태 확인
+  become: yes
+  systemd:
+    name: kubelet
+    enabled: yes
+    state: started

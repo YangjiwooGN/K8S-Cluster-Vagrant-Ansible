@@ -1,0 +1,44 @@
+- name: kubeadm init
+  shell: |
+    kubeadm init \
+      --apiserver-advertise-address={{ master_ip | default('192.168.56.10') }} \
+      --pod-network-cidr=10.244.0.0/16 \
+      --cri-socket=unix:///run/containerd/containerd.sock \
+      --ignore-preflight-errors=NumCPU,Mem
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: kubeconfig 설정
+  shell: |
+    mkdir -p $HOME/.kube
+    cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    chown $(id -u):$(id -g) $HOME/.kube/config
+
+- name: Flannel CNI 설치
+  shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+- name: join 커맨드 생성
+  shell: kubeadm token create --print-join-command
+  register: join_cmd
+
+- name: join 커맨드 저장 (Windows용)
+  when: ansible_connection == "local"
+  copy:
+    content: |
+      sudo {{ join_cmd.stdout | regex_replace('10\\.0\\.2\\.15', master_ip | default('192.168.56.10')) }} \
+      --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=NumCPU,Mem
+    dest: /vagrant/ansible/join-command.sh
+    mode: '0755'
+
+- name: join 커맨드 저장 (Linux/mac용)
+  when: ansible_connection != "local"
+  local_action:
+    module: copy
+    content: |
+      sudo {{ join_cmd.stdout | regex_replace('10\\.0\\.2\\.15', master_ip | default('192.168.56.10')) }} \
+      --cri-socket=unix:///run/containerd/containerd.sock --ignore-preflight-errors=NumCPU,Mem
+    dest: "./ansible/join-command.sh"
+  delegate_to: localhost
+  run_once: true
